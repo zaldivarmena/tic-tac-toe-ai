@@ -1,10 +1,11 @@
+// TicTacToe.js
 import React, { useState, useEffect } from 'react';
 import styles from './TicTacToeStyles';
 
 const TicTacToe = () => {
   const [board, setBoard] = useState(Array(9).fill(null));
   const [isXNext, setIsXNext] = useState(true);
-  const [gameMode, setGameMode] = useState('multiplayer');
+  const [gameMode, setGameMode] = useState('multiplayer'); // 'multiplayer' or 'computer'
   const [scores, setScores] = useState({ X: 0, O: 0, ties: 0 });
   const [gameStatus, setGameStatus] = useState('Next player: X');
   const [winningLine, setWinningLine] = useState([]);
@@ -15,6 +16,7 @@ const TicTacToe = () => {
     [0, 4, 8], [2, 4, 6]             // diagonals
   ];
 
+  // Calculate winner
   const calculateWinner = (squares) => {
     for (let i = 0; i < lines.length; i++) {
       const [a, b, c] = lines[i];
@@ -23,6 +25,7 @@ const TicTacToe = () => {
       }
     }
     
+    // Check for tie
     if (squares.every(square => square !== null)) {
       return { winner: 'tie', line: [] };
     }
@@ -30,6 +33,7 @@ const TicTacToe = () => {
     return null;
   };
 
+  // Reset board
   const resetBoard = () => {
     setBoard(Array(9).fill(null));
     setIsXNext(true);
@@ -37,88 +41,108 @@ const TicTacToe = () => {
     setWinningLine([]);
   };
 
+  // Reset game including scores
   const resetGame = () => {
     resetBoard();
     setScores({ X: 0, O: 0, ties: 0 });
   };
 
+  // Handle clicks on squares
   const handleClick = (index) => {
-    if (board[index] || calculateWinner(board)) return; // Simplified game end check
+    // Don't allow clicking on filled squares or after game ends
+    if (board[index] || winningLine.length > 0) return;
     
     const newBoard = [...board];
     newBoard[index] = isXNext ? 'X' : 'O';
     setBoard(newBoard);
-    const result = calculateWinner(newBoard);
     
+    const result = calculateWinner(newBoard);
     if (result) {
       handleGameEnd(result);
     } else {
       setIsXNext(!isXNext);
-      setGameStatus(`Next player: ${isXNext ? 'O' : 'X'}`); // Fixed player toggle
-    }
-
-    // Trigger computer move if in computer mode and it's O's turn
-    if (gameMode === 'computer' && isXNext) {
-      setTimeout(computerMove, 500);
+      setGameStatus(`Next player: ${!isXNext ? 'X' : 'O'}`);
     }
   };
 
+  // Handle game end
   const handleGameEnd = (result) => {
     if (result.winner === 'tie') {
-      setGameStatus("It's a tie!");
-      setScores(prev => ({ ...prev, ties: prev.ties + 1 }));
+      setGameStatus('Game ended in a tie!');
+      setScores({ ...scores, ties: scores.ties + 1 });
     } else {
       setGameStatus(`Player ${result.winner} wins!`);
-      setScores(prev => ({ 
-        ...prev, 
-        [result.winner]: prev[result.winner] + 1 
-      }));
+      setScores({ 
+        ...scores, 
+        [result.winner]: scores[result.winner] + 1 
+      });
       setWinningLine(result.line);
     }
   };
 
+  // Computer move
   const computerMove = () => {
-    const currentResult = calculateWinner(board);
-    if (currentResult || board.every(square => square !== null)) return;
+    if (winningLine.length > 0 || board.every(square => square !== null)) return;
     
     const newBoard = [...board];
     let moveIndex = -1;
     
-    // Find winning move for O
+    // Try to find winning move
     for (let i = 0; i < lines.length; i++) {
       const [a, b, c] = lines[i];
-      const countO = [a, b, c].filter(idx => newBoard[idx] === 'O').length;
-      const countEmpty = [a, b, c].filter(idx => newBoard[idx] === null).length;
-      if (countO === 2 && countEmpty === 1) {
-        moveIndex = [a, b, c].find(idx => newBoard[idx] === null);
+      if (newBoard[a] === 'O' && newBoard[b] === 'O' && newBoard[c] === null) {
+        moveIndex = c;
+        break;
+      }
+      if (newBoard[a] === 'O' && newBoard[c] === 'O' && newBoard[b] === null) {
+        moveIndex = b;
+        break;
+      }
+      if (newBoard[b] === 'O' && newBoard[c] === 'O' && newBoard[a] === null) {
+        moveIndex = a;
         break;
       }
     }
     
-    // Block X's winning move
+    // Try to block player
     if (moveIndex === -1) {
       for (let i = 0; i < lines.length; i++) {
         const [a, b, c] = lines[i];
-        const countX = [a, b, c].filter(idx => newBoard[idx] === 'X').length;
-        const countEmpty = [a, b, c].filter(idx => newBoard[idx] === null).length;
-        if (countX === 2 && countEmpty === 1) {
-          moveIndex = [a, b, c].find(idx => newBoard[idx] === null);
+        if (newBoard[a] === 'X' && newBoard[b] === 'X' && newBoard[c] === null) {
+          moveIndex = c;
+          break;
+        }
+        if (newBoard[a] === 'X' && newBoard[c] === 'X' && newBoard[b] === null) {
+          moveIndex = b;
+          break;
+        }
+        if (newBoard[b] === 'X' && newBoard[c] === 'X' && newBoard[a] === null) {
+          moveIndex = a;
           break;
         }
       }
     }
     
-    // Take center or random available square
+    // Take center if available
+    if (moveIndex === -1 && newBoard[4] === null) {
+      moveIndex = 4;
+    }
+    
+    // Take any available square
     if (moveIndex === -1) {
-      moveIndex = newBoard[4] === null ? 4 : 
-        newBoard.reduce((acc, square, idx) => 
-          square === null ? [...acc, idx] : acc, []
-        )[Math.floor(Math.random() * newBoard.filter(s => s === null).length)];
+      const availableSquares = newBoard
+        .map((square, idx) => square === null ? idx : null)
+        .filter(idx => idx !== null);
+      
+      if (availableSquares.length > 0) {
+        moveIndex = availableSquares[Math.floor(Math.random() * availableSquares.length)];
+      }
     }
     
     if (moveIndex !== -1) {
       newBoard[moveIndex] = 'O';
       setBoard(newBoard);
+      
       const result = calculateWinner(newBoard);
       if (result) {
         handleGameEnd(result);
@@ -129,8 +153,17 @@ const TicTacToe = () => {
     }
   };
 
-  // Removed useEffect as computer move is now triggered from handleClick
+  // Computer's turn effect
+  useEffect(() => {
+    if (gameMode === 'computer' && !isXNext && winningLine.length === 0) {
+      const timer = setTimeout(() => {
+        computerMove();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isXNext, gameMode, board]);
 
+  // Render a square
   const renderSquare = (index) => {
     const isHighlighted = winningLine.includes(index);
     const squareStyle = {
@@ -141,9 +174,9 @@ const TicTacToe = () => {
 
     return (
       <button 
+        key={index}
         style={squareStyle}
         onClick={() => handleClick(index)}
-        disabled={!!board[index] || !!calculateWinner(board)} // Disable when square is filled or game is over
       >
         {board[index]}
       </button>
@@ -154,6 +187,7 @@ const TicTacToe = () => {
     <div style={styles.container}>
       <h1 style={styles.header}>Tic Tac Toe</h1>
       
+      {/* Game mode selector */}
       <div style={styles.controls}>
         <button 
           style={{
@@ -181,16 +215,17 @@ const TicTacToe = () => {
         </button>
       </div>
       
+      {/* Status */}
       <div style={styles.status}>
         {gameStatus}
       </div>
       
+      {/* Board */}
       <div style={styles.board}>
-        {Array(9).fill(null).map((_, i) => (
-          <div key={i}>{renderSquare(i)}</div> // Added key prop for list items
-        ))}
+        {Array(9).fill(null).map((_, i) => renderSquare(i))}
       </div>
       
+      {/* Controls */}
       <div style={styles.controls}>
         <button 
           style={{...styles.button, ...styles.primaryButton}}
@@ -206,6 +241,7 @@ const TicTacToe = () => {
         </button>
       </div>
       
+      {/* Scoreboard */}
       <div style={styles.scoreSection}>
         <h2 style={styles.scoreTitle}>Score</h2>
         <div style={styles.scoreBoard}>
